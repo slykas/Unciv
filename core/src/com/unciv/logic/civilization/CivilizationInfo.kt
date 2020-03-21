@@ -25,6 +25,7 @@ import com.unciv.models.ruleset.tile.ResourceSupplyList
 import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.stats.Stats
 import com.unciv.models.translations.tr
+import com.unciv.ui.victoryscreen.RankingType
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
@@ -41,7 +42,7 @@ class CivilizationInfo {
      * Instead, we create a copy list with the change, and replace this list.
      * The other solution, casting toList() every "get", has a performance cost
      */
-    @Transient private var units=listOf<MapUnit>()
+    @Transient private var units = listOf<MapUnit>()
     @Transient var viewableTiles = setOf<TileInfo>()
     @Transient var viewableInvisibleUnitsTiles = setOf<TileInfo>()
 
@@ -121,17 +122,6 @@ class CivilizationInfo {
         return gameInfo.ruleSet.difficulties["Chieftain"]!!
     }
 
-    fun getTranslatedNation(): Nation {
-        val language = UncivGame.Current.settings.language.replace(" ","_")
-        val filePath = "jsons/Nations/Nations_$language.json"
-        if(!Gdx.files.internal(filePath).exists()) return nation
-        val translatedNation = jsonParser.getFromJson(Array<Nation>::class.java, filePath)
-                .firstOrNull { it.name==civName}
-        if(translatedNation==null)  // this language's trnslation doesn't contain this nation yet,
-            return nation      // default to english
-        return translatedNation
-    }
-
     fun getDiplomacyManager(civInfo: CivilizationInfo) = getDiplomacyManager(civInfo.civName)
     fun getDiplomacyManager(civName: String) = diplomacy[civName]!!
     /** Returns only undefeated civs, aka the ones we care about */
@@ -164,8 +154,6 @@ class CivilizationInfo {
     fun updateStatsForNextTurn(){
         statsForNextTurn = stats().getStatMapForNextTurn().values.toList().reduce{a,b->a+b}
     }
-
-
 
     fun getHappiness() = stats().getHappinessBreakdown().values.sum().roundToInt()
 
@@ -303,7 +291,7 @@ class CivilizationInfo {
     fun isAtWar() = diplomacy.values.any { it.diplomaticStatus== DiplomaticStatus.War && !it.otherCiv().isDefeated() }
 
     fun getLeaderDisplayName(): String {
-        var leaderName = getTranslatedNation().getLeaderDisplayName().tr()
+        var leaderName = nation.getLeaderDisplayName().tr()
         if (playerType == PlayerType.AI)
             leaderName += " (" + "AI".tr() + ")"
         else if (gameInfo.civilizations.count { it.playerType == PlayerType.Human } > 1)
@@ -329,6 +317,21 @@ class CivilizationInfo {
                 && !diplomacyManager.otherCivDiplomacy().hasFlag(DiplomacyFlags.ResearchAgreement)
                 && gold >= cost && otherCiv.gold >= cost
     }
+
+    fun getStatForRanking(category: RankingType) : Int {
+        return when(category) {
+            RankingType.Population -> cities.sumBy { it.population.population }
+            RankingType.CropYield -> statsForNextTurn.food.roundToInt()
+            RankingType.Production -> statsForNextTurn.production.roundToInt()
+            RankingType.Gold -> gold
+            RankingType.Land -> cities.sumBy { it.tiles.size }
+            RankingType.Force -> units.sumBy { it.baseUnit.strength }
+            RankingType.Happiness -> getHappiness()
+            RankingType.Technologies -> tech.researchedTechnologies.size
+            RankingType.Culture -> policies.numberOfAdoptedPolicies
+        }
+    }
+
     //endregion
 
     //region state-changing functions
@@ -443,7 +446,7 @@ class CivilizationInfo {
 
         goldenAges.endTurn(getHappiness())
         getCivUnits().forEach { it.endTurn() }
-        diplomacy.values.forEach { it.nextTurn() }
+        diplomacy.values.toList().forEach { it.nextTurn() } // we copy the diplomacy values so if it changes in-loop we won't crash
         updateAllyCivForCityState()
         updateHasActiveGreatWall()
     }

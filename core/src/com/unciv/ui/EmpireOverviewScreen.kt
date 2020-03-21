@@ -1,8 +1,9 @@
-package com.unciv.ui
+﻿package com.unciv.ui
 
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Group
+import com.badlogic.gdx.scenes.scene2d.Touchable
 import com.badlogic.gdx.scenes.scene2d.ui.*
 import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
@@ -15,6 +16,7 @@ import com.unciv.logic.trade.TradeOffersList
 import com.unciv.models.ruleset.tile.ResourceType
 import com.unciv.models.translations.tr
 import com.unciv.ui.cityscreen.CityScreen
+import com.unciv.ui.pickerscreens.PromotionPickerScreen
 import com.unciv.ui.utils.*
 import java.text.DecimalFormat
 import kotlin.math.*
@@ -31,7 +33,7 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
         closeButton.y = stage.height - closeButton.height - 5
         topTable.add(closeButton)
 
-        val setCityInfoButton = TextButton("Cities".tr(),skin)
+        val setCityInfoButton = TextButton("Cities".tr(), skin)
         val setCities = {
             centerTable.clear()
             centerTable.add(getCityInfoTable())
@@ -41,7 +43,7 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
         setCityInfoButton.onClick(setCities)
         topTable.add(setCityInfoButton)
 
-        val setStatsInfoButton = TextButton("Stats".tr(),skin)
+        val setStatsInfoButton = TextButton("Stats".tr(), skin)
         setStatsInfoButton.onClick {
             game.settings.addCompletedTutorialTask("See your stats breakdown")
             centerTable.clear()
@@ -56,41 +58,41 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
         }
         topTable.add(setStatsInfoButton)
 
-        val setCurrentTradesButton = TextButton("Trades".tr(),skin)
+        val setCurrentTradesButton = TextButton("Trades".tr(), skin)
         setCurrentTradesButton.onClick {
             centerTable.clear()
-            centerTable.add(ScrollPane(getTradesTable())).height(stage.height*0.8f) // so it doesn't cover the navigation buttons
+            centerTable.add(ScrollPane(getTradesTable())).height(stage.height * 0.8f) // so it doesn't cover the navigation buttons
             centerTable.pack()
         }
         topTable.add(setCurrentTradesButton)
-        if(viewingPlayer.diplomacy.values.all { it.trades.isEmpty() })
+        if (viewingPlayer.diplomacy.values.all { it.trades.isEmpty() })
             setCurrentTradesButton.disable()
 
-        val setUnitsButton = TextButton("Units".tr(),skin)
+        val setUnitsButton = TextButton("Units".tr(), skin)
         setUnitsButton.onClick {
             centerTable.clear()
-            centerTable.add(ScrollPane(getUnitTable())).height(stage.height*0.8f)
+            centerTable.add(ScrollPane(getUnitTable()).apply { setOverscroll(false,false) }).height(stage.height * 0.8f)
             centerTable.pack()
         }
-        topTable.add(setUnitsButton )
+        topTable.add(setUnitsButton)
 
 
-        val setDiplomacyButton = TextButton("Diplomacy".tr(),skin)
+        val setDiplomacyButton = TextButton("Diplomacy".tr(), skin)
         setDiplomacyButton.onClick {
             centerTable.clear()
-            centerTable.add(getDiplomacyGroup()).height(stage.height*0.8f)
+            centerTable.add(getDiplomacyGroup()).height(stage.height * 0.8f)
             centerTable.pack()
         }
         topTable.add(setDiplomacyButton)
 
-        val setResourcesButton = TextButton("Resources".tr(),skin)
+        val setResourcesButton = TextButton("Resources".tr(), skin)
         setResourcesButton.onClick {
             centerTable.clear()
-            centerTable.add(ScrollPane(getResourcesTable())).size(stage.width*0.8f, stage.height*0.8f)
+            centerTable.add(ScrollPane(getResourcesTable())).size(stage.width * 0.8f, stage.height * 0.8f)
             centerTable.pack()
         }
         topTable.add(setResourcesButton)
-        if(viewingPlayer.detailedCivResources.isEmpty())
+        if (viewingPlayer.detailedCivResources.isEmpty())
             setResourcesButton.disable()
 
         topTable.pack()
@@ -338,10 +340,12 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
         table.add("Ranged strength".tr())
         table.add("Movement".tr())
         table.add("Closest city".tr())
+        table.add("Promotions".tr())
+        table.add("Health".tr())
         table.row()
         table.addSeparator()
 
-        for(unit in viewingPlayer.getCivUnits().sortedBy { it.name }){
+        for(unit in viewingPlayer.getCivUnits().sortedWith(compareBy({it.name},{!it.due},{it.currentMovement<0.1f},{abs(it.currentTile.position.x)+abs(it.currentTile.position.y)}))) {
             val baseUnit = unit.baseUnit()
             val button = TextButton(unit.name.tr(), skin)
             button.onClick {
@@ -356,6 +360,19 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
             table.add(DecimalFormat("0.#").format(unit.currentMovement)+"/"+unit.getMaxMovement())
             val closestCity = unit.getTile().getTilesInDistance(3).firstOrNull{it.isCityCenter()}
             if (closestCity!=null) table.add(closestCity.getCity()!!.name) else table.add()
+            val promotionsTable = Table()
+            val promotionsForUnit = unit.civInfo.gameInfo.ruleSet.unitPromotions.values.filter { unit.promotions.promotions.contains(it.name) }     // force same sorting as on picker (.sorted() would be simpler code, but...)
+            for(promotion in promotionsForUnit)
+                promotionsTable.add(ImageGetter.getPromotionIcon(promotion.name))
+            if (unit.promotions.canBePromoted()) promotionsTable.add(ImageGetter.getImage("OtherIcons/Star").apply { color= Color.GOLDENROD }).size(24f).padLeft(8f)
+            if (unit.canUpgrade()) promotionsTable.add(ImageGetter.getUnitIcon(baseUnit.upgradesTo!!, Color.GREEN)).size(28f).padLeft(8f)
+            promotionsTable.onClick {
+                if (unit.promotions.canBePromoted() || unit.promotions.promotions.isNotEmpty()) {
+                    UncivGame.Current.setScreen(PromotionPickerScreen(unit))
+                }
+            }
+            table.add(promotionsTable)
+            if (unit.health in 1..99) table.add(unit.health.toString()) else table.add()
             table.row()
         }
         table.pack()
@@ -382,6 +399,7 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
             val vector = HexMath.getVectorForAngle(2 * Math.PI.toFloat() *i / relevantCivs.size)
             civGroup.center(group)
             civGroup.moveBy(vector.x*freeWidth/2.5f, vector.y*freeHeight/2.5f)
+            civGroup.touchable = Touchable.enabled
             civGroup.onClick {
                 onCivClicked(civLines, civ.civName)
             }
