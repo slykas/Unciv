@@ -128,9 +128,7 @@ class WorldMapHolder(internal val worldScreen: WorldScreen, internal val tileMap
         var unitList = ArrayList<MapUnit>()
         if (tileInfo.isCityCenter() && tileInfo.getOwner()==worldScreen.viewingCiv) {
             unitList.addAll(tileInfo.getCity()!!.getCenterTile().getUnits())
-        } else if (tileInfo.militaryUnit!=null &&
-                (tileInfo.militaryUnit!!.type.isAircraftCarrierUnit() || tileInfo.militaryUnit!!.type.isMissileCarrierUnit()) &&
-                 tileInfo.militaryUnit!!.civInfo==worldScreen.viewingCiv && tileInfo.airUnits.isNotEmpty()) {
+        } else if (tileInfo.airUnits.isNotEmpty() && tileInfo.airUnits.first().civInfo==worldScreen.viewingCiv) {
             unitList.addAll(tileInfo.getUnits())
         }
 
@@ -253,7 +251,7 @@ class WorldMapHolder(internal val worldScreen: WorldScreen, internal val tileMap
         val isAirUnit = unit.type.isAirUnit()
         val tilesInMoveRange =
                 if (isAirUnit)
-                    unit.getTile().getTilesInDistance(unit.getRange())
+                    unit.getTile().getTilesInDistance(unit.getRange()*2)
                 else
                     unit.movement.getDistanceToTiles().keys.asSequence()
 

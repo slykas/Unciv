@@ -1,3 +1,57 @@
+## 3.6.12
+
+City names now translated in overview and tile info
+
+Resolved some ANRs in Multiplayer
+
+Performance improvements in finding cities connected to capital
+
+Mod translation generation - by Jack Rainy
+
+When moving between units to units in cities, tiles they can move to are now shown
+
+Adding mods auto-adds relevant civs - by rh-github-2015
+
+Added progress bars for constructions in city screen
+
+Nicer, more consistent specialist allocation tables
+
+Translation updates
+
+## 3.6.11
+
+By rh-github-2015:
+ - More civilopedia info for nations and improvements - 
+ - Better error handling for Mods
+
+Fixed "other civ doesn't get duration on timed trades" bug
+
+Removed "Declare war" trade option when there's a peace treaty
+
+Resolved #2175 - Can no longer queue multiple perpetual builds
+
+Resolved #2150 - Added resource type to civilopedia description
+
+Resolved #2224 - can no longer enter promotions screen from overview screen if no valid promotions
+
+LOADS of Translation updates
+
+## 3.6.10
+
+By Jack Rainy:
+- Double range of rebase for air units
+- Translation files now take values directly from data files - no more value mismatches!
+
+By rh-github-2015:
+- Clearer free promotions
+- UI cleanup
+
+Unit purchasing limits - by EdinCitaku
+
+Unit Action buttons stick to the left
+
+Translation updates
+
 ## 3.6.9
 
 By rh-github-2015:
@@ -19,7 +73,7 @@ Loads of stuff by Jack Rainy!
 - Sort overview resources by name and amount
 - Turn number of trades changes with game speed
 - Filter for the custom maps
-- Ice is impassible for all except submarines
+- Ice is Impassable for all except submarines
 
 Translation updates
 

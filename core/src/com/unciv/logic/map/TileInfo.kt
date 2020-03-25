@@ -239,6 +239,8 @@ open class TileInfo {
 
         if (improvement.uniques.contains("+1 additional Culture for each adjacent Moai"))
             stats.culture += neighbors.count { it.improvement == "Moai" }
+        if (improvement.uniques.contains("+1 food for each adjacent Mountain"))
+            stats.food += neighbors.count { it.baseTerrain == Constants.mountain }
 
         return stats
     }
@@ -251,6 +253,7 @@ open class TileInfo {
             improvement.name == this.improvement -> false
             improvement.uniqueTo != null && improvement.uniqueTo != civInfo.civName -> false
             improvement.techRequired?.let { civInfo.tech.isResearched(it) } == false -> false
+            "Cannot improve a resource" in improvement.uniques && resource != null -> false
             improvement.terrainsCanBeBuiltOn.contains(topTerrain.name) -> true
             improvement.name == "Road" && roadStatus == RoadStatus.None -> true
             improvement.name == "Railroad" && this.roadStatus != RoadStatus.Railroad -> true
@@ -302,7 +305,7 @@ open class TileInfo {
 
         if (isCityCenter()) {
             val city = getCity()!!
-            var cityString = city.name
+            var cityString = city.name.tr()
             if(isViewableToPlayer) cityString += " ("+city.health+")"
             lineList += cityString
             if(UncivGame.Current.viewEntireMapForDebug || city.civInfo == viewingCiv)
@@ -329,7 +332,7 @@ open class TileInfo {
             if(!defencePercentString.startsWith("-")) defencePercentString = "+$defencePercentString"
             lineList += "[$defencePercentString] to unit defence".tr()
         }
-        if(getBaseTerrain().impassable) lineList += "Impassible".tr()
+        if(getBaseTerrain().impassable) lineList += "Impassable".tr()
 
         return lineList.joinToString("\n")
     }

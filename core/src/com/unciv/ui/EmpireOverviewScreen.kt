@@ -314,7 +314,7 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
             cityList = cityList.reversed()
 
         for (city in cityList) {
-            val button = Button(Label(city.name, skin), skin)
+            val button = Button(city.name.toLabel(), skin)
             button.onClick {
                 UncivGame.Current.setScreen(CityScreen(city))
             }
@@ -372,7 +372,7 @@ class EmpireOverviewScreen(private val viewingPlayer:CivilizationInfo) : CameraS
                 }
             }
             table.add(promotionsTable)
-            if (unit.health in 1..99) table.add(unit.health.toString()) else table.add()
+            if (unit.health < 100) table.add(unit.health.toString()) else table.add()
             table.row()
         }
         table.pack()

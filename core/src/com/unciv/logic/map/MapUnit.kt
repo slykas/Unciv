@@ -70,6 +70,8 @@ class MapUnit {
         private const val ANCIENT_RUIN_MAP_REVEAL_OFFSET = 4
         private const val ANCIENT_RUIN_MAP_REVEAL_RANGE = 4
         private const val ANCIENT_RUIN_MAP_REVEAL_CHANCE = 0.8f
+        const val BONUS_WHEN_INTERCEPTING = "Bonus when intercepting"
+        const val CHANCE_TO_INTERCEPT_AIR_ATTACKS = " chance to intercept air attacks"
     }
 
     //region pure functions
@@ -116,7 +118,7 @@ class MapUnit {
         return movement
     }
 
-    // This SHOULD NOT be a hashset, because if it is, thenn promotions with the same text (e.g. barrage I, barrage II)
+    // This SHOULD NOT be a hashset, because if it is, then promotions with the same text (e.g. barrage I, barrage II)
     //  will not get counted twice!
     @Transient var tempUniques= ArrayList<String>()
 
@@ -469,10 +471,8 @@ class MapUnit {
         civInfo.removeUnit(this)
         civInfo.updateViewableTiles()
         // all transported units should be destroyed as well
-        if (type.isAircraftCarrierUnit() || type.isMissileCarrierUnit()) {
-            currentTile.getUnits().filter { it.type.isAirUnit() && it.isTransported }
-                    .forEach { unit -> unit.destroy() }
-        }
+        currentTile.getUnits().filter { it.isTransported && isTransportTypeOf(it) }
+                .forEach { unit -> unit.destroy() }
     }
 
     fun removeFromTile(){
@@ -528,34 +528,25 @@ class MapUnit {
 
     fun disband() {
         // evacuation of transported units before disbanding, if possible
-        if (type.isAircraftCarrierUnit() || type.isMissileCarrierUnit()) {
-            for(unit in currentTile.getUnits().filter { it.type.isAirUnit() && it.isTransported }) {
-                // we disbanded a carrier in a city, it can still stay in the city
-                if (currentTile.isCityCenter() && unit.movement.canMoveTo(currentTile)) continue
-                // if no "fuel" to escape, should be disbanded as well
-                if (unit.currentMovement < 0.1)
-                    unit.disband()
-                // let's find closest city or another carrier where it can be evacuated
-                val tileCanMoveTo = unit.currentTile.getTilesInDistance(unit.getRange()).
-                        filterNot { it == currentTile }.firstOrNull{unit.movement.canMoveTo(it)}
+        for (unit in currentTile.getUnits().filter { it.isTransported && isTransportTypeOf(it) }) {
+            // we disbanded a carrier in a city, it can still stay in the city
+            if (currentTile.isCityCenter() && unit.movement.canMoveTo(currentTile)) continue
+            // if no "fuel" to escape, should be disbanded as well
+            if (unit.currentMovement < 0.1)
+                unit.disband()
+            // let's find closest city or another carrier where it can be evacuated
+            val tileCanMoveTo = unit.currentTile.getTilesInDistance(unit.getRange() * 2).filterNot { it == currentTile }.firstOrNull { unit.movement.canMoveTo(it) }
 
-                if (tileCanMoveTo!=null)
-                    unit.movement.moveToTile(tileCanMoveTo)
-                else
-                    unit.disband()
-            }
+            if (tileCanMoveTo != null)
+                unit.movement.moveToTile(tileCanMoveTo)
+            else
+                unit.disband()
         }
+
         destroy()
         if (currentTile.getOwner() == civInfo)
             civInfo.gold += baseUnit.getDisbandGold()
         if (civInfo.isDefeated()) civInfo.destroy()
-        for (unit in currentTile.getUnits().filter { it.type.isAirUnit() && it.isTransported }) {
-            if (unit.movement.canMoveTo(currentTile)) continue // we disbanded a carrier in a city, it can still stay in the city
-            val tileCanMoveTo = unit.currentTile.getTilesInDistance(unit.getRange())
-                    .firstOrNull { unit.movement.canMoveTo(it) }
-            if (tileCanMoveTo != null) unit.movement.moveToTile(tileCanMoveTo)
-            else unit.disband()
-        }
     }
 
     private fun getAncientRuinBonus(tile: TileInfo) {
@@ -631,24 +622,30 @@ class MapUnit {
 
     fun interceptChance():Int{
         val interceptUnique = getUniques()
-                .firstOrNull { it.endsWith(" chance to intercept air attacks") }
+                .firstOrNull { it.endsWith(CHANCE_TO_INTERCEPT_AIR_ATTACKS) }
         if(interceptUnique==null) return 0
         val percent = Regex("\\d+").find(interceptUnique)!!.value.toInt()
         return percent
     }
 
-    fun canTransport(mapUnit: MapUnit): Boolean {
-        if(type!=UnitType.WaterAircraftCarrier && type!=UnitType.WaterMissileCarrier)
+    fun isTransportTypeOf(mapUnit: MapUnit): Boolean {
+        val isAircraftCarrier = getUniques().contains("Can carry 2 aircraft")
+        val isMissileCarrier = getUniques().contains("Can carry 2 missiles")
+        if(!isMissileCarrier && !isAircraftCarrier)
             return false
         if(!mapUnit.type.isAirUnit()) return false
-        if(type==UnitType.WaterMissileCarrier && mapUnit.type!=UnitType.Missile)
+        if(isMissileCarrier && mapUnit.type!=UnitType.Missile)
             return false
-        if(type==UnitType.WaterAircraftCarrier && mapUnit.type==UnitType.Missile)
+        if(isAircraftCarrier && mapUnit.type==UnitType.Missile)
             return false
+        return true
+    }
+
+    fun canTransport(mapUnit: MapUnit): Boolean {
+        if(!isTransportTypeOf(mapUnit)) return false
         if(owner!=mapUnit.owner) return false
 
-        var unitCapacity = 0
-        if (getUniques().contains("Can carry 2 aircraft")) unitCapacity=2
+        var unitCapacity = 2
         unitCapacity += getUniques().count { it == "Can carry 1 extra air unit" }
 
         if(currentTile.airUnits.filter { it.isTransported }.size>=unitCapacity) return false
@@ -658,7 +655,7 @@ class MapUnit {
 
     fun interceptDamagePercentBonus():Int{
         var sum=0
-        for(unique in getUniques().filter { it.startsWith("Bonus when intercepting") }){
+        for(unique in getUniques().filter { it.startsWith(BONUS_WHEN_INTERCEPTING) }){
             val percent = Regex("\\d+").find(unique)!!.value.toInt()
             sum += percent
         }

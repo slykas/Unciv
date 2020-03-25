@@ -12,7 +12,7 @@ import com.badlogic.gdx.utils.Align
 import com.unciv.UncivGame
 import com.unciv.logic.city.CityConstructions
 import com.unciv.logic.city.CityInfo
-import com.unciv.logic.city.SpecialConstruction
+import com.unciv.logic.city.PerpetualConstruction
 import com.unciv.ui.cityscreen.CityScreen
 import com.unciv.ui.trade.DiplomacyScreen
 import com.unciv.ui.utils.*
@@ -250,7 +250,7 @@ class CityButton(val city: CityInfo, internal val tileGroup: WorldTileGroup, ski
         image.centerY(group)
         image.x = group.width-image.width
 
-        // center the circle on thee production image
+        // center the circle on the production image
         circle.x = image.x + (image.width-circle.width)/2
         circle.y = image.y + (image.height-circle.height)/2
 
@@ -259,7 +259,7 @@ class CityButton(val city: CityInfo, internal val tileGroup: WorldTileGroup, ski
 
         val secondaryColor = cityConstructions.cityInfo.civInfo.nation.getInnerColor()
         val cityCurrentConstruction = cityConstructions.getCurrentConstruction()
-        if(cityCurrentConstruction !is SpecialConstruction) {
+        if(cityCurrentConstruction !is PerpetualConstruction) {
             val turnsToConstruction = cityConstructions.turnsToConstruction(cityCurrentConstruction.name)
             val label = turnsToConstruction.toString().toLabel(secondaryColor,14)
             label.pack()

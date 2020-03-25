@@ -17,6 +17,7 @@ import com.unciv.logic.trade.TradeOffer
 import com.unciv.logic.trade.TradeType
 import com.unciv.models.ruleset.tile.ResourceSupplyList
 import com.unciv.models.ruleset.tile.ResourceType
+import com.unciv.models.ruleset.unit.BaseUnit
 import com.unciv.models.stats.Stats
 import com.unciv.ui.utils.withoutItem
 import java.util.*
@@ -147,7 +148,6 @@ class CityInfo {
             if (amount > 0) {
                 cityResources.add(resource, amount, "Tiles")
             }
-
         }
 
         for (building in cityConstructions.getBuiltBuildings().filter { it.requiredResource != null }) {
@@ -214,8 +214,9 @@ class CityInfo {
     /** Take null to mean infinity. */
     fun getNumTurnsToNewPopulation(): Int? {
         if (isGrowing()) {
-            var turnsToGrowth = ceil((population.getFoodToNextPopulation() - population.foodStored)
-                    / cityStats.currentCityStats.food).toInt()
+            val roundedFoodPerTurn = cityStats.currentCityStats.food.roundToInt().toFloat()
+            val remainingFood = population.getFoodToNextPopulation() - population.foodStored
+            var turnsToGrowth = ceil( remainingFood / roundedFoodPerTurn).toInt()
             if (turnsToGrowth < 1) turnsToGrowth = 1
             return turnsToGrowth
         }
@@ -226,7 +227,7 @@ class CityInfo {
     /** Take null to mean infinity. */
     fun getNumTurnsToStarvation(): Int? {
         if (isStarving()) {
-            return floor(population.foodStored / -cityStats.currentCityStats.food).toInt() + 1
+            return population.foodStored / -cityStats.currentCityStats.food.roundToInt() + 1
         }
 
         return null
@@ -581,6 +582,19 @@ class CityInfo {
                 .filter { it.knows(civInfo) && it.exploredTiles.contains(location) }
         for(otherCiv in civsWithCloseCities)
             otherCiv.getDiplomacyManager(civInfo).setFlag(DiplomacyFlags.SettledCitiesNearUs,30)
+    }
+
+    fun canPurchase(construction : IConstruction) : Boolean {
+        if (construction is BaseUnit)
+        {
+            val tile = getCenterTile()
+            if (construction.unitType.isCivilian())
+                return tile.civilianUnit == null
+            if (construction.unitType.isAirUnit())
+                return tile.airUnits.filter { !it.isTransported }.size < 6
+            else return tile.militaryUnit == null
+        }
+        return true
     }
     //endregion
 }
